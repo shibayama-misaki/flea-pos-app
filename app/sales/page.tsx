@@ -44,12 +44,6 @@ export default function SalesPage() {
 
   return (
     <>
-    <Link href="/">
-      <button className="mb-4 ml-2 rounded bg-gray-500 px-4 py-2 text-white">
-        会計
-      </button>
-    </Link>
-
     <main className="min-h-screen p-4 bg-white">
       <h1 className="text-2xl font-bold mb-4">売上一覧</h1>
       {sales.length === 0 ? (
