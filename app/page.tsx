@@ -122,7 +122,7 @@ export default function Home() {
       <button
         className="mb-4 rounded bg-blue-500 px-4 py-2 text-white"
         onClick={() => {
-          const name = prompt("商品名")
+          const name = prompt("商品名") || ""
           const price = Number(prompt("価格"))
           const stock = Number(prompt("在庫"))
           const image = prompt("画像URL")
@@ -164,11 +164,7 @@ export default function Home() {
           <div className="flex items-center gap-2">
             <div className="h-12 w-12 overflow-hidden rounded bg-gray-100">
               {c.image ? (
-                <img
-                  src={c.image}
-                  alt={c.name}
-                  className="h-full w-full object-cover"
-                />
+                <img src={c.image} alt={c.name} className="h-full w-full object-cover" />
               ) : null}
             </div>
 
