@@ -1,9 +1,9 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { collection, onSnapshot, query, orderBy } from "firebase/firestore"
-import { db } from "@/lib/firebase"
-import Link from "next/link"
+import { collection, onSnapshot, query, orderBy, where } from "firebase/firestore"
+import { db } from "../../../../lib/firebase"
+import { useParams } from "next/navigation"
 
 type Sale = {
   id: string
@@ -13,7 +13,9 @@ type Sale = {
 }
 
 export default function SalesPage() {
-  const [sales, setSales] = useState<Sale[]>([])
+  const [sales, setSales] = useState<Sale[]>([]);
+  const params = useParams();
+  const eventId = params.eventId as string;
 
   /** 商品ごとの合計 */
   const summary = sales.reduce((acc: any, sale) => {
@@ -28,7 +30,11 @@ export default function SalesPage() {
   }, {})
 
   useEffect(() => {
-    const q = query(collection(db, "sales"), orderBy("createdAt", "desc"))
+    const q = query(
+      collection(db, "sales"),
+      where("eventId", "==", eventId),
+      orderBy("createdAt", "desc")
+    )
 
     const unsub = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map((doc) => ({
@@ -40,7 +46,7 @@ export default function SalesPage() {
     })
 
     return () => unsub()
-  }, [])
+  }, [eventId])
 
   return (
     <>
