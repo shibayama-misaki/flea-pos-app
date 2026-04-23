@@ -4,8 +4,9 @@ import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import {
-  addDoc,
   collection,
+  deleteDoc,
+  doc,
   onSnapshot,
   query,
   Timestamp,
@@ -14,14 +15,9 @@ import {
 import { db } from "../../../lib/firebase"
 import { EventItem } from "@/types/EventItem"
 import { Item } from "@/types/Item"
-
-type Event = {
-  id: string
-  name: string
-  date?: Timestamp
-  place?: string
-  note?: string
-}
+import AddEventItemModal from "@/components/modal/AddEventItemModal"
+import EditEventItemModal from "@/components/modal/EditEventItemModal"
+import { Event } from "@/types/Event"
 
 const formatDate = (value: any) => {
   if (!value) return "日付未設定"
@@ -37,6 +33,9 @@ export default function EventDetailPage() {
   const [event, setEvent] = useState<Event | null>(null)
   const [eventItems, setEventItems] = useState<EventItem[]>([])
   const [items, setItems] = useState<Item[]>([])
+  const [openAddModal, setOpenAddModal] = useState(false)
+  const [openEditModal, setOpenEditModal] = useState(false)
+  const [editingEventItem, setEditingEventItem] = useState<EventItem | null>(null)
 
   useEffect(() => {
     const q = query(collection(db, "events"), where("__name__", "==", eventId))
@@ -90,8 +89,8 @@ export default function EventDetailPage() {
       const item = items.find((i) => i.id === eventItem.itemId)
       return {
         ...eventItem,
-        itemName: item?.name || "不明な商品",
-        image: item?.image || "",
+        itemName: item?.name || eventItem.name || "不明な商品",
+        image: eventItem.image || item?.image || "",
       }
     })
   }, [eventItems, items])
@@ -101,118 +100,116 @@ export default function EventDetailPage() {
     return items.filter((item) => !registeredIds.has(item.id))
   }, [items, eventItems])
 
-  const addItemToEvent = async (item: Item) => {
-    const stock = Number(prompt("初期在庫を入力してください", "1"))
-    const price = Number(prompt("販売価格を入力してください", String(item.price)))
+    const openEdit = (eventItem: EventItem) => {
+    setEditingEventItem(eventItem)
+    setOpenEditModal(true)
+  }
 
-    if (Number.isNaN(stock) || stock < 0) {
-      alert("在庫を正しく入力してください")
-      return
-    }
+  const closeEdit = () => {
+    setOpenEditModal(false)
+    setEditingEventItem(null)
+  }
 
-    if (Number.isNaN(price) || price < 0) {
-      alert("価格を正しく入力してください")
-      return
-    }
+  const deleteEventItem = async (eventItem: EventItem) => {
+    const ok = confirm(`「${eventItem.name}」をこのイベントから削除しますか？`)
+    if (!ok) return
 
     try {
-      await addDoc(collection(db, "eventItems"), {
-        eventId,
-        itemId: item.id,
-        name: item.name,
-        stock,
-        price,
-        image: item.image
-      })
+      await deleteDoc(doc(db, "eventItems", eventItem.id))
     } catch (error) {
       console.error(error)
-      alert("イベント商品追加に失敗しました")
+      alert("イベント商品の削除に失敗しました")
     }
   }
 
   return (
-    <main className="min-h-screen bg-white p-4 pb-8">
-      <section className="mb-8">
-        <h2 className="mb-2 text-2xl font-bold">
-          {event ? event.name : "読み込み中..."}
-        </h2>
+    <>
+      <main className="min-h-screen bg-white p-4 pb-8">
+        <section className="mb-8">
+          <h2 className="mb-2 text-2xl font-bold">
+            {event ? event.name : "読み込み中..."}
+          </h2>
 
-        {event && (
-          <div className="text-sm text-gray-600">
-            <p>
-              {formatDate(event.date)}
-              {event.place ? ` / ${event.place}` : ""}
-            </p>
-            {event.note && <p className="mt-1">{event.note}</p>}
+          {event && (
+            <div className="text-sm text-gray-600">
+              <p>
+                {formatDate(event.date)}
+                {event.place ? ` / ${event.place}` : ""}
+              </p>
+              {event.memo && <p className="mt-1">{event.memo}</p>}
+            </div>
+          )}
+        </section>
+
+        <section className="mb-8">
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="text-xl font-bold">このイベントの商品</h3>
+
+            <button
+              onClick={() => setOpenAddModal(true)}
+              className="rounded bg-green-600 px-4 py-2 text-sm font-medium text-white"
+            >
+              商品を追加
+            </button>
           </div>
-        )}
-      </section>
 
-      <section className="mb-8">
-        <h3 className="mb-3 text-xl font-bold">このイベントの商品</h3>
+          {joinedEventItems.length === 0 ? (
+            <p className="text-gray-500">商品がまだ登録されていません</p>
+          ) : (
+            <div className="space-y-3">
+              {joinedEventItems.map((ei) => (
+                <div key={ei.id} className="flex justify-between rounded-xl border p-4 shadow-sm">
+                  <div className="flex items-center gap-3">
+                    <div className="h-16 w-16 overflow-hidden rounded-lg bg-gray-100">
+                      {ei.image ? (
+                        <img
+                          src={ei.image}
+                          alt={ei.itemName}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : null}
+                    </div>
 
-        {joinedEventItems.length === 0 ? (
-          <p className="text-gray-500">商品がまだ登録されていません</p>
-        ) : (
-          <div className="space-y-3">
-            {joinedEventItems.map((ei) => (
-              <div key={ei.id} className="rounded-xl border p-4 shadow-sm">
-                <div className="flex items-center gap-3">
-                  <div className="h-16 w-16 overflow-hidden rounded-lg bg-gray-100">
-                    {ei.image ? (
-                      <img
-                        src={ei.image}
-                        alt={ei.itemName}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : null}
+                    <div>
+                      <p className="text-lg font-medium">{ei.itemName}</p>
+                      <p className="text-sm text-gray-600">在庫: {ei.stock}</p>
+                      <p className="text-sm text-gray-600">価格: ¥{ei.price}</p>
+                    </div>
                   </div>
 
-                  <div>
-                    <p className="text-lg font-medium">{ei.itemName}</p>
-                    <p className="text-sm text-gray-600">在庫: {ei.stock}</p>
-                    <p className="text-sm text-gray-600">価格: ¥{ei.price}</p>
+                  <div className="flex shrink-0 gap-2">
+                    <button
+                      onClick={() => openEdit(ei)}
+                      className="rounded bg-blue-500 px-3 py-2 text-sm font-medium text-white"
+                    >
+                      編集
+                    </button>
+                    <button
+                      onClick={() => deleteEventItem(ei)}
+                      className="rounded bg-red-500 px-3 py-2 text-sm font-medium text-white"
+                    >
+                      削除
+                    </button>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
+              ))}
+            </div>
+          )}
+        </section>
+      </main>
 
-      <section>
-        <h3 className="mb-3 text-xl font-bold">追加できる商品</h3>
+      <AddEventItemModal
+        open={openAddModal}
+        onClose={() => setOpenAddModal(false)}
+        eventId={eventId}
+        addableItems={addableItems}
+      />
 
-        {addableItems.length === 0 ? (
-          <p className="text-gray-500">追加できる商品はありません</p>
-        ) : (
-          <div className="grid grid-cols-2 gap-4">
-            {addableItems.map((item) => (
-              <div key={item.id} className="rounded-xl border p-3 shadow-sm">
-                <div className="mb-2 aspect-square overflow-hidden rounded-lg bg-gray-100">
-                  {item.image ? (
-                    <img
-                      src={item.image}
-                      alt={item.name}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : null}
-                </div>
-
-                <p className="text-lg font-medium">{item.name}</p>
-                <p className="mb-3 font-semibold">¥{item.price}</p>
-
-                <button
-                  onClick={() => addItemToEvent(item)}
-                  className="w-full rounded bg-green-600 py-2 font-medium text-white"
-                >
-                  このイベントに追加
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-    </main>
+      <EditEventItemModal
+        open={openEditModal}
+        onClose={closeEdit}
+        eventItem={editingEventItem}
+      />
+    </>
   )
 }

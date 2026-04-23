@@ -1,9 +1,10 @@
 export type EventItem = {
-  id: string
   eventId: string
+  id: string
+  image?: string // 商品画像
   itemId: string
-  itemName: string
-  itemImage: string
-  price: number
-  stock: number
+  memo?: string // 備考
+  name: string // 商品名
+  price: number // 単価
+  stock: number // 在庫数
 }

@@ -1,5 +1,6 @@
 "use client"
 
+import { ownerUserId } from "@/constants"
 import Link from "next/link"
 
 export default function Home() {
@@ -9,22 +10,30 @@ export default function Home() {
 
       <div className="space-y-4">
         <Link
-          href="/events"
+          href={`/events`}
           className="block rounded-xl border p-4 shadow-sm"
         >
-          <p className="text-lg font-medium">イベント一覧</p>
+          <p className="text-lg font-medium">参加イベント一覧</p>
           <p className="text-sm text-gray-600">
-            イベントを確認・追加できます
+            イベントを管理できます
           </p>
         </Link>
-
         <Link
-          href="/items"
+          href={`/items`}
           className="block rounded-xl border p-4 shadow-sm"
         >
           <p className="text-lg font-medium">商品一覧</p>
           <p className="text-sm text-gray-600">
-            商品マスタを確認・追加できます
+            商品を管理できます
+          </p>
+        </Link>
+        <Link
+          href={`/sales`}
+          className="block rounded-xl border p-4 shadow-sm"
+        >
+          <p className="text-lg font-medium">売上一覧</p>
+          <p className="text-sm text-gray-600">
+            売上履歴を確認できます
           </p>
         </Link>
       </div>
