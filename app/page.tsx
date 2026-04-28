@@ -1,6 +1,5 @@
 "use client"
 
-import { ownerUserId } from "@/constants"
 import Link from "next/link"
 
 export default function Home() {
