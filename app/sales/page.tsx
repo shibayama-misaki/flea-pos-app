@@ -14,6 +14,7 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  TooltipContentProps,
 } from "recharts"
 
 const formatDateTime = (value: any) => {
@@ -42,31 +43,36 @@ export default function SalesPage() {
   const [selectedItemId, setSelectedItemId] = useState("all")
   const [selectedDate, setSelectedDate] = useState("")
 
-  useEffect(() => {
-    const unsub = onSnapshot(collection(db, "saleItems"), (snapshot) => {
-      const data = snapshot.docs.map((docSnap) => ({
-        id: docSnap.id,
-        ...docSnap.data(),
-      })) as SaleItem[]
+  const CustomTooltip = ({ active, payload }: TooltipContentProps) => {
+    if (!active || !payload || payload.length === 0) return null
+    const data = payload[0].payload as {
+      time: string
+      amount: number
+      sales: {
+        name: string
+        qty: number
+        amount: number
+      }[]
+    }
 
-      setSaleItems(data)
-    })
+    return (
+      <div className="rounded-lg border bg-white p-3 shadow-md">
+        <p className="mb-2 text-sm font-bold">時間: {data.time}</p>
 
-    return () => unsub()
-  }, [])
+        <div className="space-y-1 text-sm">
+          {data.sales.map((sale, index) => (
+            <div key={index} className="border-b pb-1 last:border-b-0">
+              <p>商品名: {sale.name}</p>
+              <p>売れた点数: {sale.qty}</p>
+              <p>金額: ¥{sale.amount}</p>
+            </div>
+          ))}
+        </div>
 
-  useEffect(() => {
-    const unsub = onSnapshot(collection(db, "events"), (snapshot) => {
-      const data = snapshot.docs.map((docSnap) => ({
-        id: docSnap.id,
-        ...docSnap.data(),
-      })) as Event[]
-
-      setEvents(data)
-    })
-
-    return () => unsub()
-  }, [])
+        <p className="mt-2 text-sm font-bold">合計: ¥{data.amount}</p>
+      </div>
+    )
+  }
 
   const eventMap = useMemo(() => {
     return new Map(events.map((event) => [event.id, event]))
@@ -125,15 +131,6 @@ export default function SalesPage() {
     })
   }, [baseFilteredByEvent, selectedItemId])
 
-  useEffect(() => {
-    if (selectedItemId === "all") return
-
-    const exists = itemOptions.some((item) => item.itemId === selectedItemId)
-    if (!exists) {
-      setSelectedItemId("all")
-    }
-  }, [itemOptions, selectedItemId])
-
   const totalQty = useMemo(() => {
     return filteredSaleItems.reduce((sum, item) => sum + item.qty, 0)
   }, [filteredSaleItems])
@@ -157,6 +154,91 @@ export default function SalesPage() {
     return keys.sort((a, b) => (a < b ? 1 : -1))
   }, [filteredSaleItems])
 
+  /** 1日分のデータ */
+  const dailyChartData = useMemo(() => {
+    if (!selectedDate) return []
+
+    const dayItems = filteredSaleItems.filter(
+      (item) => formatDateKey(item.createdAt) === selectedDate
+    )
+
+    const buckets = new Map<
+      string,
+      {
+        amount: number
+        sales: {
+          name: string
+          qty: number
+          amount: number
+        }[]
+      }
+    >()
+
+    for (const item of dayItems) {
+      if (!item.createdAt?.toDate) continue
+
+      const d = item.createdAt.toDate()
+      const hh = String(d.getHours()).padStart(2, "0")
+      const mm = String(d.getMinutes()).padStart(2, "0")
+      const label = `${hh}:${mm}`
+
+      const subtotal = item.price * item.qty
+      const current = buckets.get(label) ?? { amount: 0, sales: [] }
+
+      current.amount += subtotal
+      current.sales.push({
+        name: item.name,
+        qty: item.qty,
+        amount: subtotal,
+      })
+
+      buckets.set(label, current)
+    }
+
+    return Array.from(buckets.entries())
+      .sort((a, b) => (a[0] < b[0] ? -1 : 1))
+      .map(([time, value]) => ({
+        time,
+        amount: value.amount,
+        sales: value.sales,
+      }))
+  }, [filteredSaleItems, selectedDate])
+
+ useEffect(() => {
+    const unsub = onSnapshot(collection(db, "saleItems"), (snapshot) => {
+      const data = snapshot.docs.map((docSnap) => ({
+        id: docSnap.id,
+        ...docSnap.data(),
+      })) as SaleItem[]
+
+      setSaleItems(data)
+    })
+
+    return () => unsub()
+  }, [])
+
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "events"), (snapshot) => {
+      const data = snapshot.docs.map((docSnap) => ({
+        id: docSnap.id,
+        ...docSnap.data(),
+      })) as Event[]
+
+      setEvents(data)
+    })
+
+    return () => unsub()
+  }, [])
+
+  useEffect(() => {
+    if (selectedItemId === "all") return
+
+    const exists = itemOptions.some((item) => item.itemId === selectedItemId)
+    if (!exists) {
+      setSelectedItemId("all")
+    }
+  }, [itemOptions, selectedItemId])
+
   useEffect(() => {
     if (!selectedDate && dateOptions.length > 0) {
       setSelectedDate(dateOptions[0])
@@ -168,33 +250,6 @@ export default function SalesPage() {
     }
   }, [dateOptions, selectedDate])
 
-  const dailyChartData = useMemo(() => {
-    if (!selectedDate) return []
-
-    const dayItems = filteredSaleItems.filter(
-      (item) => formatDateKey(item.createdAt) === selectedDate
-    )
-
-    const buckets = new Map<string, number>()
-
-    for (const item of dayItems) {
-      if (!item.createdAt?.toDate) continue
-
-      const d = item.createdAt.toDate()
-      const hh = String(d.getHours()).padStart(2, "0")
-      const mm = String(d.getMinutes()).padStart(2, "0")
-      const label = `${hh}:${mm}`
-
-      buckets.set(label, (buckets.get(label) ?? 0) + item.price * item.qty)
-    }
-
-    return Array.from(buckets.entries())
-      .sort((a, b) => (a[0] < b[0] ? -1 : 1))
-      .map(([time, amount]) => ({
-        time,
-        amount,
-      }))
-  }, [filteredSaleItems, selectedDate])
 
   return (
     <main className="min-h-screen bg-white p-4 pb-8">
@@ -296,7 +351,7 @@ export default function SalesPage() {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="time" />
                 <YAxis />
-                <Tooltip />
+                <Tooltip content={CustomTooltip} />
                 <Line
                   type="monotone"
                   dataKey="amount"

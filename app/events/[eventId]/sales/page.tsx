@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import Link from "next/link"
 import { useParams } from "next/navigation"
 import { collection, onSnapshot, query, where } from "firebase/firestore"
 import { db } from "../../../../lib/firebase"

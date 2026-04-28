@@ -18,6 +18,7 @@ import { Item } from "@/types/Item"
 import AddEventItemModal from "@/components/modal/AddEventItemModal"
 import EditEventItemModal from "@/components/modal/EditEventItemModal"
 import { Event } from "@/types/Event"
+import { toThumbUrl } from "@/utils/file"
 
 const formatDate = (value: any) => {
   if (!value) return "日付未設定"
@@ -163,7 +164,7 @@ export default function EventDetailPage() {
                     <div className="h-16 w-16 overflow-hidden rounded-lg bg-gray-100">
                       {ei.image ? (
                         <img
-                          src={ei.image}
+                          src={toThumbUrl(ei.image)}
                           alt={ei.itemName}
                           className="h-full w-full object-cover"
                         />

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { addDoc, collection } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { Item } from "@/types/Item"
+import { toThumbUrl } from "@/utils/file"
 
 type Props = {
   open: boolean
@@ -169,7 +170,7 @@ export default function AddEventItemModal({
                         <div className="h-10 w-10 overflow-hidden rounded bg-gray-100">
                           {item.image ? (
                             <img
-                              src={item.image}
+                              src={toThumbUrl(item.image)}
                               alt={item.name}
                               className="h-full w-full object-cover"
                             />

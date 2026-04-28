@@ -13,6 +13,7 @@ import {
 } from "firebase/firestore"
 import { db } from "../../../../lib/firebase"
 import { EventItem } from "@/types/EventItem"
+import { toThumbUrl } from "@/utils/file"
 
 type CartItem = EventItem & {
   qty: number
@@ -203,7 +204,7 @@ export default function RegisterPage() {
                   <div className="mb-2 aspect-square overflow-hidden rounded-lg bg-gray-100">
                     {item.image ? (
                       <img
-                        src={item.image}
+                        src={toThumbUrl(item.image)}
                         alt={item.name}
                         className="h-full w-full object-cover"
                       />
